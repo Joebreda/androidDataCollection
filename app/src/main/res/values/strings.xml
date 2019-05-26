@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">deployment</string>
+    <string name="button_start_logging">Start Logging</string>
+    <string name="button_stop_logging">Stop Logging</string>
+    <string name="button_email_data">Email</string>
+
+    <string name="device_admin_description">This app is device admin</string>
+    <string name="device_admin">This app is device admin</string>
+</resources>
