@@ -68,4 +68,18 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/stopLogger" />
 
+    <TextView
+        android:id="@+id/loggingIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="177dp"
+        android:layout_marginTop="180dp"
+        android:layout_marginEnd="176dp"
+        android:layout_marginBottom="65dp"
+        android:text="Not Logging..."
+        app:layout_constraintBottom_toTopOf="@+id/startUnrootedLogging"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
 </android.support.constraint.ConstraintLayout>

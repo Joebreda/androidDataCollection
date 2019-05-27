@@ -34,6 +34,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
@@ -59,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     // used such that timer is only scheduled once per run of the app.
     //TODO this means that if a user tries to collect data using scheduled job it will only work the first time
     boolean timerBeenScheduled = false;
+    TextView loggingIndicator;
 
 
 
@@ -390,6 +392,8 @@ public class MainActivity extends AppCompatActivity {
                         Log.i("JOE", "Starting Logger...");
                         intent.putExtra("isRootedButton", rooted);
                         startService(intent);
+                        loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
+                        loggingIndicator.setText("Currently Logging Rooted...");
                         // TODO automated testing after starting logging
                         runOnUiThread(new Runnable() {
                             @Override
@@ -410,6 +414,8 @@ public class MainActivity extends AppCompatActivity {
                     case R.id.stopLogger:
                         Log.i("JOE", "Stopping Logger...");
                         stopService(intent);
+                        loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
+                        loggingIndicator.setText("Not logging...");
                         break;
                 }
             }
@@ -429,10 +435,29 @@ public class MainActivity extends AppCompatActivity {
                         Log.i("JOE", "Starting Logger as NOT rooted user...");
                         intent.putExtra("isRootedButton", rooted);
                         startService(intent);
+                        loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
+                        loggingIndicator.setText("Currently Logging unrooted...");
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                // Stuff that updates the UI
+                                getWindow().addFlags(
+                                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                                                | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                                                | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                                                | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+                            }
+                        });
+                        if(!timerBeenScheduled){
+                            timer.schedule(turnScreenOff, 3600*1000); // turn screen off after 1 hour.
+                            timerBeenScheduled = true;
+                        }
                         break;
                     case R.id.stopUnrootedLogging:
                         Log.i("JOE", "Stopping Logger as NOT rooted user......");
                         stopService(intent);
+                        loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
+                        loggingIndicator.setText("Not logging...");
                         break;
                 }
             }

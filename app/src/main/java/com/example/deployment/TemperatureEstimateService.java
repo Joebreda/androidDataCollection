@@ -242,7 +242,6 @@ public class TemperatureEstimateService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId){
         //String yes = intent.getStringExtra("isRootedButton");
         rooted = intent.getExtras().getBoolean("isRootedButton");
-        Log.e("extra passed", "was extra passed? " + rooted);
         // trigger wakelock on start of data collection
         if(rooted){
             partialWakeLock.acquire();
