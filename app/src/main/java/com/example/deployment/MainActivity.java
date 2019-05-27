@@ -34,6 +34,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -61,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     //TODO this means that if a user tries to collect data using scheduled job it will only work the first time
     boolean timerBeenScheduled = false;
     TextView loggingIndicator;
+    Switch rootedSwitch;
 
 
 
@@ -381,6 +383,9 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         }
 
+        // switch for setting rooted or not rooted
+        rootedSwitch = (Switch) findViewById(R.id.rootSwitch);
+
         /* Implements functionality for the data logging buttons. */
         View.OnClickListener listenerLoggerButtons = new View.OnClickListener(){
             @Override
@@ -388,12 +393,22 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, TemperatureEstimateService.class);
                 switch (view.getId()){
                     case R.id.startLogger:
-                        rooted = true;
+                        Boolean switchState = rootedSwitch.isChecked();
+                        if(switchState){
+                            rooted = true;
+                            Log.e("switchCheck", "Logging rooted data because of switch");
+                            loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
+                            loggingIndicator.setText("Currently Logging Rooted...");
+                        } else {
+                            rooted = false;
+                            Log.e("switchCheck", "Logging NOT rooted data because of switch");
+                            loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
+                            loggingIndicator.setText("Currently Logging unrooted...");
+                        }
+                        //rooted = true;
                         Log.i("JOE", "Starting Logger...");
                         intent.putExtra("isRootedButton", rooted);
                         startService(intent);
-                        loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
-                        loggingIndicator.setText("Currently Logging Rooted...");
                         // TODO automated testing after starting logging
                         runOnUiThread(new Runnable() {
                             @Override
@@ -424,7 +439,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.stopLogger).setOnClickListener(listenerLoggerButtons);
 
 
-        /* Implements functionality for the data logging buttons. */
+        /*
         View.OnClickListener cpuStressButton = new View.OnClickListener(){
             @Override
             public void onClick(View view){
@@ -465,7 +480,7 @@ public class MainActivity extends AppCompatActivity {
         };
         findViewById(R.id.startUnrootedLogging).setOnClickListener(cpuStressButton);
         findViewById(R.id.stopUnrootedLogging).setOnClickListener(cpuStressButton);
-
+        */
 
 
 
