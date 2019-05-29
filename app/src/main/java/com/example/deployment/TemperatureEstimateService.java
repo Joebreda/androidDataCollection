@@ -44,6 +44,8 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.topjohnwu.superuser.io.SuRandomAccessFile;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -79,6 +81,7 @@ public class TemperatureEstimateService extends Service {
     boolean stress = true;
     int numThreads;
     Timer timer = new Timer ();
+    boolean timerBeenScheduled = false;
 
     final static int myID = 8989;
     private boolean isRunning = false;
@@ -148,6 +151,15 @@ public class TemperatureEstimateService extends Service {
         }
     }
 
+    TimerTask stopLoad = new TimerTask() {
+        @Override
+        public void run() {
+            Log.e("CPU STRESS FROM SERVICE", "TURNING OFF CPU STRESS AND SETTING NUMTHREADS TO 0");
+            stress = false;
+            numThreads = 0;
+        }
+    };
+
 
     TimerTask automatedGenerateThreads = new TimerTask() {
         @Override
@@ -176,12 +188,16 @@ public class TemperatureEstimateService extends Service {
         }
     };
 
-    public void generateFullLoad(){
+    public void generateFullLoadFor(int seconds){
         stress = true;
         numThreads = 5;
         int NUM_THREADS = 4;
         for(int i = 0; i < NUM_THREADS; ++i) {
             new ShuffleSortThread(); // create a new thread
+        }
+        if(!timerBeenScheduled){
+            timer.schedule(stopLoad, seconds*1000); // turn screen off after 1 hour. 3600+1000
+            timerBeenScheduled = true;
         }
     }
 
@@ -195,6 +211,8 @@ public class TemperatureEstimateService extends Service {
     public void onCreate(){
         // initiate thread to monitor software and hardware sensor values
         HandlerThread handlerThread = new HandlerThread("TemperatureEstimateThread", Process.THREAD_PRIORITY_BACKGROUND);
+        // TODO UNSURE IF THIS WILL ACTUALLY JUST FORGROUND THE PROCESS SO WE NEED NOT WAKELOCK.
+        //HandlerThread handlerThread = new HandlerThread("TemperatureEstimateThread", Process.THREAD_PRIORITY_FOREGROUND);
         handlerThread.start();
 
         // Conditional for data collection style
@@ -215,9 +233,7 @@ public class TemperatureEstimateService extends Service {
         // database stuff
         context = getApplicationContext();
         this.database = new DatabaseHelper(context);
-        //TODO: this.temperatureDatabase = new TemperatureDBHelper(context);
         // initiate power manager and wakelock
-
         mpowerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         partialWakeLock = mpowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DataCollection:partialWakeLock");
 
@@ -243,12 +259,20 @@ public class TemperatureEstimateService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId){
         //String yes = intent.getStringExtra("isRootedButton");
         rooted = intent.getExtras().getBoolean("isRootedButton");
+        boolean generatingFullLoad = intent.getExtras().getBoolean("generatingFullLoad");
+        int seconds = intent.getExtras().getInt("seconds");
+
+        //int seconds = intent.getIntExtra("seconds", 0);
+        Log.e("extras passed", "root: " + rooted + ", generating high load: " + generatingFullLoad + ", for " + seconds + " seconds.");
         // trigger wakelock on start of data collection
         if(rooted){
             partialWakeLock.acquire();
         }
-        // TODO GENERATE LOAD HERE
-        generateFullLoad();
+        if(generatingFullLoad){
+            generateFullLoadFor(seconds);
+        } else {
+            numThreads = 0;
+        }
         //generateThreadsOneAtATime(0, 15);
 
         // make message display on start
@@ -528,6 +552,8 @@ public class TemperatureEstimateService extends Service {
             return -1000.00;
         }
         try {
+            //TODO This option generates around 30% CPU load alone... Therefore it cannot be used.
+            //SuRandomAccessFile reader = SuRandomAccessFile.open("/proc/stat", "r");
             RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r");
             //if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && rooted){
             //    reader = new RandomAccessFile("/proc/stat", "r");
