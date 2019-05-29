@@ -25,7 +25,6 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
-import android.os.CpuUsageInfo;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.HardwarePropertiesManager;
@@ -40,8 +39,6 @@ import android.support.v4.app.NotificationCompat;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Display;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.topjohnwu.superuser.io.SuRandomAccessFile;
@@ -58,7 +55,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -67,7 +63,6 @@ import static android.os.HardwarePropertiesManager.DEVICE_TEMPERATURE_BATTERY;
 import static android.os.HardwarePropertiesManager.DEVICE_TEMPERATURE_CPU;
 import static android.os.HardwarePropertiesManager.DEVICE_TEMPERATURE_SKIN;
 import static android.os.HardwarePropertiesManager.TEMPERATURE_CURRENT;
-import static java.lang.Runtime.getRuntime;
 
 public class TemperatureEstimateService extends Service {
 
