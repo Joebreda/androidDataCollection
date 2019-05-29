@@ -65,6 +65,7 @@ import static android.os.HardwarePropertiesManager.DEVICE_TEMPERATURE_BATTERY;
 import static android.os.HardwarePropertiesManager.DEVICE_TEMPERATURE_CPU;
 import static android.os.HardwarePropertiesManager.DEVICE_TEMPERATURE_SKIN;
 import static android.os.HardwarePropertiesManager.TEMPERATURE_CURRENT;
+import static java.lang.Runtime.getRuntime;
 
 public class TemperatureEstimateService extends Service {
 
@@ -247,7 +248,7 @@ public class TemperatureEstimateService extends Service {
             partialWakeLock.acquire();
         }
         // TODO GENERATE LOAD HERE
-        //generateFullLoad();
+        generateFullLoad();
         //generateThreadsOneAtATime(0, 15);
 
         // make message display on start
@@ -523,12 +524,17 @@ public class TemperatureEstimateService extends Service {
     //TODO find a way to do this on Android 8+ without root access???
     private double getCPULoad() {
         // base case for when the SDK is greater than android 7 and is not rooted.
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !rooted){
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !rooted) {
             return -1000.00;
         }
-
         try {
             RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r");
+            //if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && rooted){
+            //    reader = new RandomAccessFile("/proc/stat", "r");
+            //} else {
+                //SuRandomAccessFile reader = SuRandomAccessFile.open(“/proc/stat”, “r”);
+            //}
+
             String load = reader.readLine();
 
             String[] toks = load.split(" +");  // Split on one or more spaces
@@ -644,7 +650,7 @@ public class TemperatureEstimateService extends Service {
     // REQUIRES ROOT
     private float[] getLoadAvg() {
         // base case for non-rooted phones
-        if(!rooted){
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O || !rooted){
             float[] loadAvgArray = new float[3];
             loadAvgArray[0] = -1000;
             loadAvgArray[1] = -1000;
