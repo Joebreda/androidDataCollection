@@ -151,15 +151,6 @@ public class TemperatureEstimateService extends Service {
         }
     }
 
-    TimerTask stopLoad = new TimerTask() {
-        @Override
-        public void run() {
-            Log.e("CPU STRESS FROM SERVICE", "TURNING OFF CPU STRESS AND SETTING NUMTHREADS TO 0");
-            stress = false;
-            numThreads = 0;
-        }
-    };
-
 
     TimerTask automatedGenerateThreads = new TimerTask() {
         @Override
@@ -185,6 +176,15 @@ public class TemperatureEstimateService extends Service {
                 timer.cancel();
             }
             numThreads++;
+        }
+    };
+
+    TimerTask stopLoad = new TimerTask() {
+        @Override
+        public void run() {
+            Log.e("CPU STRESS FROM SERVICE", "TURNING OFF CPU STRESS AND SETTING NUMTHREADS TO 0");
+            stress = false;
+            numThreads = 0;
         }
     };
 
@@ -287,7 +287,6 @@ public class TemperatureEstimateService extends Service {
         } else {
             Toast.makeText(this, "starting data logging for NOT ROOTED device", Toast.LENGTH_SHORT).show();
         }
-        //Toast.makeText(this, "starting temperature estimates", Toast.LENGTH_SHORT).show();
 
         if(Build.VERSION.SDK_INT > Build.VERSION_CODES.N_MR1) {
             // min 26

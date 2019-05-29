@@ -50,7 +50,6 @@ import java.util.TimerTask;
 
 
 public class MainActivity extends AppCompatActivity {
-    boolean stress = true;
     Timer timer = new Timer ();
     int curNumThreads = 0;
     public static boolean isRecursionEnable = true;
@@ -67,45 +66,7 @@ public class MainActivity extends AppCompatActivity {
     Switch screenSwitch;
 
 
-
-    ////////////////////////// Methods used to generate CPU load ///////////////////////////////////
-
-
-    class ShuffleSortThread extends Thread {
-        ShuffleSortThread() {
-            // Create a new, second thread
-            super("Shuffle Sort Thread");
-            start(); // Start the thread
-        }
-
-        // This is the entry point for the second thread.
-        public void run() {
-            ArrayList<String> randoms = new ArrayList<>();
-            for(int i = 0; i < 1000; i++){
-                byte[] array = new byte[7]; // length is bounded by 7
-                new Random().nextBytes(array);
-                String generatedString = new String(array, Charset.forName("UTF-8"));
-                randoms.add(generatedString);
-            }
-
-            while(stress) {
-                Collections.sort(randoms);
-                Collections.shuffle(randoms);
-            }
-
-        }
-    }
-
-    public void generateFullLoad(){
-        stress = true;
-        int NUM_THREADS = 4;
-        for(int i = 0; i < NUM_THREADS; ++i) {
-            new ShuffleSortThread(); // create a new thread
-        }
-    }
-
     /////////////////////////////// Methods used to turn screen off ////////////////////////////////
-
 
 
     TimerTask coolOff = new TimerTask () {
@@ -122,8 +83,6 @@ public class MainActivity extends AppCompatActivity {
                                     | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
                 }
             });
-            stress = false;
-
         }
     };
 
@@ -138,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
     public void justScreenExperiment(Intent intent, int seconds){
         Log.i("EXPERIMENT IN EXECUTION", "JUST SCREEN");
         intent.putExtra("generatingFullLoad", false);
-        Log.e("SECONDS", "" + seconds);
         intent.putExtra("seconds", seconds);
         runOnUiThread(new Runnable() {
             @Override
@@ -159,10 +117,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void ScreenAndCPUExperiment(Intent intent, int seconds){
         Log.i("EXPERIMENT IN EXECUTION", "CPU AND SCREEN");
-        //generateFullLoad();
         // NOTE it is better that we generate the load in the service as mainActivity performs to much to consistently keep load at 100
         intent.putExtra("generatingFullLoad", true);
-        Log.e("SECONDS", "" + seconds);
         intent.putExtra("seconds", seconds);
         runOnUiThread(new Runnable() {
             @Override
@@ -180,10 +136,6 @@ public class MainActivity extends AppCompatActivity {
             timerBeenScheduled = true;
         }
     }
-
-
-
-
 
 
 
@@ -243,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
                         intent.putExtra("isRootedButton", rooted);
 
-                        int durationOfExperiment = 3600; // seconds
+                        int durationOfExperiment = 40; // seconds
 
                         // Switches for running idle, justScreen, or screen+stressCPU
                         boolean screenSwitchState = screenSwitch.isChecked();
@@ -259,26 +211,6 @@ public class MainActivity extends AppCompatActivity {
                         }
                         Log.i("JOE", "Starting Logger...");
                         startService(intent);
-
-                        /*
-                        //intent.putExtra("generatingFullLoad", true);
-                        //generateFullLoad();
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                // Stuff that updates the UI
-                                getWindow().addFlags(
-                                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                                                | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-                                                | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                                                | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-                            }
-                        });
-                        if(!timerBeenScheduled){
-                            timer.schedule(coolOff, 10*1000); // turn screen off after 1 hour. 3600+1000
-                            timerBeenScheduled = true;
-                        }
-                        */
                         break;
                     case R.id.stopLogger:
                         Log.i("JOE", "Stopping Logger...");
