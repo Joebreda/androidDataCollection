@@ -19,60 +19,137 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 
 import java.io.File;
+import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
 
 public class MainActivity extends AppCompatActivity {
-    Timer timer = new Timer ();
-    int curNumThreads = 0;
-    public static boolean isRecursionEnable = true;
-    int stage = 0;
-
+    //Timer timer = new Timer ();
+    boolean stress = true;
+    Timer timer;
     // used for passing to logger service so multiple buttons can use the same code.
     boolean rooted;
     // used such that timer is only scheduled once per run of the app.
-    //TODO this means that if a user tries to collect data using scheduled job it will only work the first time
-    boolean timerBeenScheduled = false;
     TextView loggingIndicator;
+    EditText inputField;
     Switch rootedSwitch;
     Switch CPUSwitch;
     Switch screenSwitch;
-
+    //Intent stressIntent;
 
     /////////////////////////////// Methods used to turn screen off ////////////////////////////////
 
+    public void releaseScreenLock(){
+        Log.i("screen", "turning off");
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                getWindow().clearFlags(
+                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                                | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                                | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                                | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+            }
+        });
+    }
 
-    TimerTask coolOff = new TimerTask () {
-        @Override
-        public void run () {
-            Log.i("cool off", "turning off screen and stopping all CPU load if there is any.");
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    getWindow().clearFlags(
-                            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                                    | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-                                    | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                                    | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-                }
-            });
+    //////////////////////////////// Methods for stressing CPU /////////////////////////////////////
+
+    private class RSA {
+        private int bitlen;
+        /* renamed from: d */
+        private BigInteger f6d;
+        /* renamed from: e */
+        private BigInteger f7e;
+        /* renamed from: n */
+        private BigInteger f8n;
+
+        private RSA(BigInteger newn, BigInteger newe) {
+            this.bitlen = 1024;
+            this.f8n = newn;
+            this.f7e = newe;
         }
-    };
+
+        private RSA(int bits) {
+            this.bitlen = 1024;
+            this.bitlen = bits;
+            SecureRandom r = new SecureRandom();
+            BigInteger p = new BigInteger(this.bitlen / 2, 100, r);
+            BigInteger q = new BigInteger(this.bitlen / 2, 100, r);
+            this.f8n = p.multiply(q);
+            BigInteger m = p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE));
+            this.f7e = new BigInteger("3");
+            while (m.gcd(this.f7e).intValue() > 1) {
+                this.f7e = this.f7e.add(new BigInteger("2"));
+            }
+            this.f6d = this.f7e.modInverse(m);
+        }
+
+        private synchronized BigInteger encrypt(BigInteger message) {
+            return message.modPow(this.f7e, this.f8n);
+        }
+
+        private synchronized BigInteger decrypt(BigInteger message) {
+            return message.modPow(this.f6d, this.f8n);
+        }
+
+        private synchronized void generateKeys() {
+            SecureRandom r = new SecureRandom();
+            BigInteger p = new BigInteger(this.bitlen / 2, 100, r);
+            BigInteger q = new BigInteger(this.bitlen / 2, 100, r);
+            this.f8n = p.multiply(q);
+            BigInteger m = p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE));
+            this.f7e = new BigInteger("3");
+            while (m.gcd(this.f7e).intValue() > 1) {
+                this.f7e = this.f7e.add(new BigInteger("2"));
+            }
+            this.f6d = this.f7e.modInverse(m);
+        }
+    }
+
+    class RSALoadThread extends Thread {
+        RSALoadThread() {
+
+        }
+        public void run() {
+            while(stress){
+                MainActivity.this.callRSA();
+            }
+        }
+    }
+
+    private void callRSA() {
+        RSA rsa = new RSA(2048);
+        rsa.decrypt(rsa.encrypt(BigInteger.probablePrime(2048, new Random())));
+    }
+
+    public void generateRSALoadThreads() {
+        stress = true;
+        for(int i = 0; i < Runtime.getRuntime().availableProcessors(); i++){
+            new RSALoadThread().start();
+        }
+
+    }
 
     /////////////////////// wrappers to call automated screen and CPU switches /////////////////////
 
-    public void idleExperiment(Intent intent){
+    public void idleExperiment(Intent intent, int seconds){
         // screen remains off and no load is generated
         Log.i("EXPERIMENT IN EXECUTION", "IDLE");
         intent.putExtra("generatingFullLoad", false);
+        intent.putExtra("seconds", seconds);
     }
+
 
     public void justScreenExperiment(Intent intent, int seconds){
         Log.i("EXPERIMENT IN EXECUTION", "JUST SCREEN");
@@ -89,17 +166,21 @@ public class MainActivity extends AppCompatActivity {
                                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
             }
         });
-        if(!timerBeenScheduled){
-            timer.schedule(coolOff, seconds*1000); // turn screen off after 1 hour. 3600+1000
-            timerBeenScheduled = true;
-        }
     }
 
     public void ScreenAndCPUExperiment(Intent intent, int seconds){
         Log.i("EXPERIMENT IN EXECUTION", "CPU AND SCREEN");
         // NOTE it is better that we generate the load in the service as mainActivity performs to much to consistently keep load at 100
+
+        // when generating stress in this way, we get 100% utilization
         intent.putExtra("generatingFullLoad", true);
         intent.putExtra("seconds", seconds);
+        // when generating stress in this way we get around 90% utilization
+        /*
+        if(generateLoadInSeparateService){
+            startService(stressIntent);
+        }
+        */
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -111,17 +192,13 @@ public class MainActivity extends AppCompatActivity {
                                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
             }
         });
-        if(!timerBeenScheduled){
-            timer.schedule(coolOff, seconds*1000); // turn screen off after 1 hour. 3600+1000
-            timerBeenScheduled = true;
-        }
     }
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //TODO in the case where we would like to use a separate service for generating load.
+        //stressIntent = new Intent(MainActivity.this, stressCPUService.class);
 
         Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
         mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -151,6 +228,7 @@ public class MainActivity extends AppCompatActivity {
         rootedSwitch = (Switch) findViewById(R.id.rootSwitch);
         screenSwitch = (Switch) findViewById(R.id.screenSwitch);
         CPUSwitch = (Switch) findViewById(R.id.CPUSwitch);
+        inputField = (EditText) findViewById(R.id.inputField);
 
         /* Implements functionality for the data logging buttons. */
         View.OnClickListener listenerLoggerButtons = new View.OnClickListener(){
@@ -159,6 +237,11 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, TemperatureEstimateService.class);
                 switch (view.getId()){
                     case R.id.startLogger:
+                        String input = inputField.getText().toString();
+                        int durationOfExperiment = Integer.parseInt(input);
+                        // reset timer
+                        timer = new Timer();
+
                         // switch which dictates if service should log as if on rooted device or not
                         boolean rootSwitchState = rootedSwitch.isChecked();
                         if(rootSwitchState){
@@ -172,11 +255,15 @@ public class MainActivity extends AppCompatActivity {
                             loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
                             loggingIndicator.setText("Currently Logging unrooted...");
                         }
-
                         intent.putExtra("isRootedButton", rooted);
 
                         //TODO PLEASE DO NOT FORGET TO SET THIS VALUE TO WHATEVER DURATION YOUD LIKE THE SCREEN TO BE ON FOR.
-                        int durationOfExperiment = 3600; // seconds
+                        timer.schedule(
+                                new TimerTask(){
+                                    public void run(){
+                                        releaseScreenLock();
+                                    }
+                                }, durationOfExperiment*1000);
 
                         // Switches for running idle, justScreen, or screen+stressCPU
                         boolean screenSwitchState = screenSwitch.isChecked();
@@ -188,13 +275,16 @@ public class MainActivity extends AppCompatActivity {
                         else if(screenSwitchState){
                             justScreenExperiment(intent, durationOfExperiment);
                         } else {
-                            idleExperiment(intent);
+                            idleExperiment(intent, durationOfExperiment);
                         }
                         Log.i("JOE", "Starting Logger...");
                         startService(intent);
                         break;
                     case R.id.stopLogger:
                         Log.i("JOE", "Stopping Logger...");
+                        timer.cancel();
+                        stress = false;
+                        releaseScreenLock();
                         stopService(intent);
                         loggingIndicator = (TextView)findViewById(R.id.loggingIndicator);
                         loggingIndicator.setText("Not logging...");

@@ -71,12 +71,18 @@ public class TemperatureEstimateService extends Service {
     private String collectionStyle = "second";
     private boolean rooted;
 
+    // Thread array
+    Thread[] threads = new Thread[4];
+    // generating in another service.
+    Intent stressIntent;
+
 
     // for the systematic thread generation for black-box model data collection
     boolean stress = true;
     int numThreads;
-    Timer timer = new Timer ();
-    boolean timerBeenScheduled = false;
+    //Timer timer = new Timer ();
+    Timer timer;
+    boolean timerPrevScheduled = false;
 
     final static int myID = 8989;
     private boolean isRunning = false;
@@ -140,10 +146,16 @@ public class TemperatureEstimateService extends Service {
             }
             */
             int counter = 0;
+            // TODO could change this to !this.isInterupted()
             while(stress){
                 counter++;
             }
         }
+    }
+
+    public void generateThreadsOneAtATime(int secondsInitialDelay, int secondsDelayBetween){
+        numThreads = 0;
+        timer.schedule(automatedGenerateThreads, secondsInitialDelay, secondsDelayBetween*1000); // repeats task every 30 minutes
     }
 
 
@@ -174,33 +186,41 @@ public class TemperatureEstimateService extends Service {
         }
     };
 
-    TimerTask stopLoad = new TimerTask() {
-        @Override
-        public void run() {
-            Log.e("CPU STRESS FROM SERVICE", "TURNING OFF CPU STRESS AND SETTING NUMTHREADS TO 0");
-            stress = false;
-            numThreads = 0;
-        }
-    };
-
-    public void generateFullLoadFor(int seconds){
+    public void generateFullLoadUsingThreads(int seconds){
         stress = true;
         numThreads = 5;
         int NUM_THREADS = 4;
         for(int i = 0; i < NUM_THREADS; ++i) {
-            new ShuffleSortThread(); // create a new thread
-        }
-        if(!timerBeenScheduled){
-            timer.schedule(stopLoad, seconds*1000); // turn screen off after 1 hour. 3600+1000
-            timerBeenScheduled = true;
+            // must keep track of the threads so they can be interrupted
+            threads[i] = new ShuffleSortThread(); // create a new thread
         }
     }
 
-    public void generateThreadsOneAtATime(int secondsInitialDelay, int secondsDelayBetween){
+    public void generateFullLoadUsingService(int seconds){
+        numThreads = 5;
+        startService(stressIntent);
+
+        /*
+        if(!timerPrevScheduled){
+            timer.schedule(stopGenerationInOtherService, seconds*1000); // turn screen off after 1 hour. 3600+1000
+            timerPrevScheduled = true;
+        }
+        */
+    }
+
+    public void stopLoadThreads(){
+        stress = false;
+        stopService(stressIntent);
         numThreads = 0;
-        timer.schedule(automatedGenerateThreads, secondsInitialDelay, secondsDelayBetween*1000); // repeats task every 30 minutes
+        if(threads[0] != null){
+            Log.e("threads stop", "threads were initialized to something else");
+            // stops all running threads thus reducing the CPU frequencies of each core
+            threads[0].interrupt();
+            threads[1].interrupt();
+            threads[2].interrupt();
+            threads[3].interrupt();
+        }
     }
-
 
     @Override
     public void onCreate(){
@@ -209,6 +229,9 @@ public class TemperatureEstimateService extends Service {
         // TODO UNSURE IF THIS WILL ACTUALLY JUST FORGROUND THE PROCESS SO WE NEED NOT WAKELOCK.
         //HandlerThread handlerThread = new HandlerThread("TemperatureEstimateThread", Process.THREAD_PRIORITY_FOREGROUND);
         handlerThread.start();
+
+        //TODO generate in another service
+        stressIntent = new Intent(TemperatureEstimateService.this, stressCPUService.class);
 
         // Conditional for data collection style
         if(collectionStyle.equals("second")){
@@ -252,24 +275,34 @@ public class TemperatureEstimateService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        //String yes = intent.getStringExtra("isRootedButton");
         rooted = intent.getExtras().getBoolean("isRootedButton");
         boolean generatingFullLoad = intent.getExtras().getBoolean("generatingFullLoad");
         int seconds = intent.getExtras().getInt("seconds");
-
         //int seconds = intent.getIntExtra("seconds", 0);
         Log.e("extras passed", "root: " + rooted + ", generating high load: " + generatingFullLoad + ", for " + seconds + " seconds.");
+
+        timer = new Timer();
         // trigger wakelock on start of data collection
         if(rooted){
-            partialWakeLock.acquire();
+            if(!partialWakeLock.isHeld()) {
+                partialWakeLock.acquire();
+            }
         }
         if(generatingFullLoad){
-            generateFullLoadFor(seconds);
+            //TODO
+            //generateFullLoadFor(seconds);
+            generateFullLoadUsingThreads(seconds);
+            generateFullLoadUsingService(seconds);
+            timer.schedule(
+                    new TimerTask(){
+                        public void run(){
+                            stopLoadThreads();
+                        }
+                    },seconds*1000);
+
         } else {
             numThreads = 0;
         }
-        //generateThreadsOneAtATime(0, 15);
-
         // make message display on start
         if(collectionStyle.equals("second")){
             Message message = TemperatureEstimateServiceHandler.obtainMessage();
@@ -328,6 +361,7 @@ public class TemperatureEstimateService extends Service {
         isRunning = false;
         stress = false;
         timer.cancel();
+        stopLoadThreads();
         if(collectionStyle.equals("update")){
             this.unregisterReceiver(batteryInfoReceiver);
             // calculate the duration of the test in seconds
@@ -347,7 +381,9 @@ public class TemperatureEstimateService extends Service {
         context.deleteDatabase(database.DATABASE_NAME);
         // release wakelock before closing application
         if(rooted){
-            partialWakeLock.release();
+            if(partialWakeLock.isHeld()){
+                partialWakeLock.release();
+            }
         }
     }
 
@@ -598,9 +634,11 @@ public class TemperatureEstimateService extends Service {
     // REQUIRES ROOT
     private Double getCPUFreq(String cpuNumber){
         // base case for non-rooted phones
+        /*
         if(!rooted){
             return -1000.00;
         }
+        */
         String cpuFreq = "";
         try{
             RandomAccessFile reader = new RandomAccessFile("/sys/devices/system/cpu/cpu" + cpuNumber +"/cpufreq/scaling_cur_freq", "r");
