@@ -292,7 +292,7 @@ public class TemperatureEstimateService extends Service {
             //TODO
             //generateFullLoadFor(seconds);
             generateFullLoadUsingThreads(seconds);
-            generateFullLoadUsingService(seconds);
+            //generateFullLoadUsingService(seconds);
             timer.schedule(
                     new TimerTask(){
                         public void run(){
